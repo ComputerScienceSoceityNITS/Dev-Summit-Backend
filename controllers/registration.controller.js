@@ -4,6 +4,44 @@ const asyncHandler = require("../utils/asyncHandler");
 const { successResponse, errorResponse } = require("../utils/responseHandler");
 
 /**
+ * @desc    Get the authenticated user's active event registrations
+ * @route   GET /api/registrations/mine
+ * @access  Private
+ */
+const getMyRegistrations = asyncHandler(async (req, res) => {
+  const participants = await Participant.find({
+    user: req.user._id,
+    status: "registered",
+  })
+    .populate(
+      "event",
+      "title description wing date time venue registrationStatus",
+    )
+    .sort({ createdAt: -1 });
+
+  const registrations = participants
+    .filter((participant) => participant.event)
+    .map((participant) => ({
+      id: participant._id,
+      registeredAt: participant.createdAt,
+      event: {
+        id: participant.event._id,
+        title: participant.event.title,
+        description: participant.event.description,
+        wing: participant.event.wing,
+        date: participant.event.date,
+        time: participant.event.time,
+        venue: participant.event.venue,
+        registrationStatus: participant.event.registrationStatus,
+      },
+    }));
+
+  return successResponse(res, 200, "Your registrations were retrieved.", {
+    registrations,
+  });
+});
+
+/**
  * @desc    Register the authenticated user for an event
  * @route   POST /api/registrations/solo
  * @access  Private
@@ -66,5 +104,6 @@ const register = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
+  getMyRegistrations,
   register,
 };
