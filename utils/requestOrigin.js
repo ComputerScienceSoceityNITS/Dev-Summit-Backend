@@ -1,9 +1,29 @@
-const configuredOrigin = new URL(
-  process.env.CLIENT_URL || "http://localhost:5173",
-).origin;
+const getAllowedOrigins = () => {
+  const envOrigins = (
+    process.env.ALLOWED_ORIGINS ||
+    process.env.CLIENT_URL ||
+    "http://localhost:5173"
+  )
+    .split(",")
+    .map((url) => {
+      try {
+        return new URL(url.trim()).origin;
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+
+  return new Set(envOrigins);
+};
 
 const isAllowedOrigin = (origin) => {
-  if (!origin || origin === configuredOrigin) {
+  if (!origin) {
+    return true;
+  }
+
+  const allowedOrigins = getAllowedOrigins();
+  if (allowedOrigins.has(origin)) {
     return true;
   }
 
