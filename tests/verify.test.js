@@ -31,6 +31,7 @@ const { protect } = require("../middleware/auth.middleware");
 const Participant = require("../models/participant.model");
 const { register } = require("../controllers/registration.controller");
 const {
+  getAdminStats,
   exportRegistrationsCsv,
   updateRegistrationStatus,
 } = require("../controllers/admin.controller");
@@ -122,10 +123,10 @@ test("Dev Summit Backend Verification Suite", async (t) => {
     assert.deepStrictEqual(User.schema.path("role").enumValues, ["admin", "user"]);
   });
 
-  await t.test("User model accepts valid email addresses from other domains", async () => {
+  await t.test("User model accepts valid NIT Silchar subdomain email addresses", async () => {
     const user = new User({
       name: "Test Student",
-      email: "student@example.com",
+      email: "student@cs.nits.ac.in",
       password: "password123",
       scholarId: "22CS001",
     });
@@ -488,8 +489,13 @@ test("Dev Summit Backend Verification Suite", async (t) => {
 
   await t.test("CSV export neutralizes spreadsheet formulas", async () => {
     const originalFind = Participant.find;
+    const originalEventFindById = Event.findById;
 
     try {
+      Event.findById = async () => ({
+        _id: "event-123",
+        title: "Test Event",
+      });
       Participant.find = () => ({
         populate: () => ({
           sort: async () => [
@@ -497,7 +503,7 @@ test("Dev Summit Backend Verification Suite", async (t) => {
               event: { title: "=HYPERLINK(\"https://example.com\")" },
               status: "registered",
               user: {
-                name: "Test User",
+                name: "=HYPERLINK(\"https://example.com\")",
                 email: "test@cse.nits.ac.in",
                 scholarId: "22CS001",
               },
@@ -507,7 +513,9 @@ test("Dev Summit Backend Verification Suite", async (t) => {
         }),
       });
 
-      const { req, res } = createMockReqRes();
+      const { req, res } = createMockReqRes({
+        query: { eventId: "event-123" },
+      });
       await exportRegistrationsCsv(req, res, (error) => {
         throw error;
       });
@@ -515,6 +523,7 @@ test("Dev Summit Backend Verification Suite", async (t) => {
       assert.match(res.payload, /"'=HYPERLINK/);
     } finally {
       Participant.find = originalFind;
+      Event.findById = originalEventFindById;
     }
   });
 
@@ -555,6 +564,36 @@ test("Dev Summit Backend Verification Suite", async (t) => {
       assert.strictEqual(invalid.res.statusCode, 400);
     } finally {
       Participant.findByIdAndUpdate = originalFindByIdAndUpdate;
+    }
+  });
+
+  await t.test("Admin stats count events and registration statuses", async () => {
+    const originalEventCountDocuments = Event.countDocuments;
+    const originalParticipantCountDocuments = Participant.countDocuments;
+
+    try {
+      Event.countDocuments = async () => 4;
+      Participant.countDocuments = async (filter = {}) => {
+        if (filter.status === "registered") return 7;
+        if (filter.status === "unregistered") return 2;
+        return 9;
+      };
+
+      const { req, res } = createMockReqRes();
+      await getAdminStats(req, res, (error) => {
+        throw error;
+      });
+
+      assert.strictEqual(res.statusCode, 200);
+      assert.deepStrictEqual(res.payload.data, {
+        eventCount: 4,
+        totalRegistrations: 9,
+        activeRegistrations: 7,
+        inactiveRegistrations: 2,
+      });
+    } finally {
+      Event.countDocuments = originalEventCountDocuments;
+      Participant.countDocuments = originalParticipantCountDocuments;
     }
   });
 

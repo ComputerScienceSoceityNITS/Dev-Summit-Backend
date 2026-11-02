@@ -79,6 +79,8 @@ npm run seed
 
 ### 4. Run Development Server
 
+Use Node.js 18.11 or newer (`npm run dev` uses Node's built-in watch mode).
+
 ```bash
 npm run dev
 # or for production:
@@ -131,7 +133,7 @@ All responses adhere to the standard JSON format:
 - `PATCH /api/admin/registrations/:id/status` — Set participant status to `registered` or `unregistered`.
 - `GET /api/admin/stats` — Participant status and event totals.
 
-Authentication uses an HttpOnly JWT cookie named `dev_summit_token`. The token is not included in the signup or login response. The cookie uses `SameSite=Lax` and is marked `Secure` in production. Configure `CLIENT_URL` with the frontend origin; browser clients making cross-origin requests must include credentials.
+Authentication uses an HttpOnly JWT cookie named `dev_summit_token`. The token is not included in the signup or login response. The cookie uses `SameSite=None; Secure` on Vercel/production deployments so the separately hosted frontend can authenticate, and `SameSite=Lax` for local development. Configure `CLIENT_URL` or `ALLOWED_ORIGINS` with the exact deployed frontend origin; browser clients making cross-origin requests must include credentials.
 
 Password-based signup requires `name`, `email`, `password`, and `scholarId`; the email must use an NIT Silchar subdomain. Public signup always creates a regular user account, regardless of any `role` value in the request.
 
@@ -139,5 +141,5 @@ Google sign-in requires `GOOGLE_CLIENT_ID` in the backend environment and the sa
 
 Event participation is stored as a `Participant` record linking the authenticated user and event. Each user can have one record per event; registering again reactivates an `unregistered` record. Team registrations and ticket verification are not supported by this participant model.
 
-Authenticated requests validate the `Origin` against `CLIENT_URL` (with local development origins allowed outside production). Browser clients must send the authentication cookie with credentials.
+Authenticated requests validate the `Origin` against `ALLOWED_ORIGINS` (comma-separated exact origins), falling back to `CLIENT_URL` (with local development origins allowed outside production). Set the deployed frontend origin in the Vercel backend project settings. Browser clients must send the authentication cookie with credentials.
 "# Dev-Summit-Backend" 

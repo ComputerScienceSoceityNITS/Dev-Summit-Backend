@@ -1,9 +1,10 @@
 const AUTH_COOKIE_NAME = "dev_summit_token";
+const { isProduction, isVercel } = require("./runtimeEnvironment");
 
 const getAuthCookieOptions = () => ({
   httpOnly: true,
-  secure: process.env.NODE_ENV === "production",
-  sameSite: "lax",
+  secure: isProduction || isVercel,
+  sameSite: isProduction || isVercel ? "none" : "lax",
   path: "/",
 });
 

@@ -1,4 +1,5 @@
 const { errorResponse } = require("../utils/responseHandler");
+const { isProduction, isVercel } = require("../utils/runtimeEnvironment");
 
 /**
  * 404 Handler for undefined routes
@@ -53,13 +54,16 @@ const errorHandler = (err, req, res, next) => {
   // Default server error
   const statusCode =
     err.statusCode || err.status || (res.statusCode === 200 ? 500 : res.statusCode);
-  const message = err.message || "Internal Server Error";
+  const message =
+    statusCode >= 500 ? "Internal Server Error" : err.message || "Request failed";
 
   return errorResponse(
     res,
     statusCode,
     message,
-    process.env.NODE_ENV === "development" ? { stack: err.stack } : undefined
+    process.env.NODE_ENV === "development" && !isProduction && !isVercel
+      ? { stack: err.stack }
+      : undefined
   );
 };
 

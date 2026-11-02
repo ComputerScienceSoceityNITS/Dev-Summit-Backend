@@ -6,6 +6,7 @@ const cors = require("cors");
 
 const connectDB = require("./config/db");
 const { isAllowedOrigin } = require("./utils/requestOrigin");
+const asyncHandler = require("./utils/asyncHandler");
 
 // Import Route Handlers
 const authRoutes = require("./routes/auth.routes");
@@ -19,6 +20,7 @@ const {
   errorHandler,
 } = require("./middleware/error.middleware");
 const { successResponse } = require("./utils/responseHandler");
+const { getEnvironmentName, isVercel } = require("./utils/runtimeEnvironment");
 
 const app = express();
 
@@ -36,11 +38,18 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 
+app.use(
+  asyncHandler(async (req, res, next) => {
+    await connectDB();
+    return next();
+  }),
+);
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   return successResponse(res, 200, "Dev Summit API is active and healthy", {
     status: "UP",
-    environment: process.env.NODE_ENV || "development",
+    environment: getEnvironmentName(),
     timestamp: new Date().toISOString(),
     service: "Dev Summit 2026 Backend",
   });
@@ -62,7 +71,7 @@ const PORT = process.env.PORT || 5000;
 
 module.exports = app;
 
-if (process.env.NODE_ENV !== "test") {
+if (process.env.NODE_ENV !== "test" && !isVercel) {
   const startServer = async () => {
     await connectDB();
     app.listen(PORT, () => {

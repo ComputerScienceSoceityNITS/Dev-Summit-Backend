@@ -26,12 +26,37 @@ const pickEventFields = (source) =>
  * @access  Public
  */
 const getEvents = asyncHandler(async (req, res) => {
-  const events = await Event.find().sort({ date: 1, createdAt: 1 });
+  const filter = {};
+  if (typeof req.query.wing === "string" && req.query.wing.trim()) {
+    filter.wing = req.query.wing.trim();
+  }
+  if (
+    typeof req.query.status === "string" &&
+    ["upcoming", "open", "closed"].includes(req.query.status)
+  ) {
+    filter.registrationStatus = req.query.status;
+  }
+
+  const events = await Event.find(filter).sort({ date: 1, createdAt: 1 });
 
   return successResponse(res, 200, "Events retrieved successfully", {
     count: events.length,
     events,
   });
+});
+
+/**
+ * @desc    Get one public event
+ * @route   GET /api/events/:id
+ * @access  Public
+ */
+const getEventById = asyncHandler(async (req, res) => {
+  const event = await Event.findById(req.params.id);
+  if (!event) {
+    return errorResponse(res, 404, "Event not found");
+  }
+
+  return successResponse(res, 200, "Event retrieved successfully", { event });
 });
 
 /**
@@ -42,6 +67,25 @@ const getEvents = asyncHandler(async (req, res) => {
 const createEvent = asyncHandler(async (req, res) => {
   const event = await Event.create(pickEventFields(req.body));
   return successResponse(res, 201, "Event created successfully", { event });
+});
+
+/**
+ * @desc    Update an event
+ * @route   PUT /api/events/:id
+ * @access  Private / Admin
+ */
+const updateEvent = asyncHandler(async (req, res) => {
+  const event = await Event.findByIdAndUpdate(
+    req.params.id,
+    pickEventFields(req.body),
+    { new: true, runValidators: true },
+  );
+
+  if (!event) {
+    return errorResponse(res, 404, "Event not found");
+  }
+
+  return successResponse(res, 200, "Event updated successfully", { event });
 });
 
 /**
@@ -63,6 +107,8 @@ const deleteEvent = asyncHandler(async (req, res) => {
 
 module.exports = {
   getEvents,
+  getEventById,
   createEvent,
+  updateEvent,
   deleteEvent,
 };

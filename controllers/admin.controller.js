@@ -60,6 +60,62 @@ const getRegistrations = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Update a participant registration status
+ * @route   PATCH /api/admin/registrations/:id/status
+ * @access  Private / Admin
+ */
+const updateRegistrationStatus = asyncHandler(async (req, res) => {
+  const { status } = req.body;
+  if (!["registered", "unregistered"].includes(status)) {
+    return errorResponse(
+      res,
+      400,
+      "Registration status must be registered or unregistered.",
+    );
+  }
+
+  const registration = await Participant.findByIdAndUpdate(
+    req.params.id,
+    { status },
+    { new: true, runValidators: true },
+  ).populate(participantPopulate);
+
+  if (!registration) {
+    return errorResponse(res, 404, "Registration not found.");
+  }
+
+  return successResponse(res, 200, "Registration status updated.", {
+    registration,
+  });
+});
+
+/**
+ * @desc    Get event and registration totals
+ * @route   GET /api/admin/stats
+ * @access  Private / Admin
+ */
+const getAdminStats = asyncHandler(async (req, res) => {
+  const [
+    eventCount,
+    totalRegistrations,
+    activeRegistrations,
+    inactiveRegistrations,
+  ] = await Promise.all([
+    Event.countDocuments(),
+    Participant.countDocuments(),
+    Participant.countDocuments({ status: "registered" }),
+    Participant.countDocuments({ status: "unregistered" }),
+  ]);
+
+  return successResponse(res, 200, "Admin statistics retrieved.", {
+    eventCount,
+    totalRegistrations,
+    activeRegistrations,
+    inactiveRegistrations,
+  });
+});
+
+/**
  * @desc    Export participants as CSV
  * @route   GET /api/admin/registrations/export
  * @access  Private / Admin
@@ -116,4 +172,6 @@ const exportRegistrationsCsv = asyncHandler(async (req, res) => {
 module.exports = {
   getRegistrations,
   exportRegistrationsCsv,
+  updateRegistrationStatus,
+  getAdminStats,
 };
