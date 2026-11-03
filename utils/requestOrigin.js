@@ -16,7 +16,10 @@ const getAllowedOrigins = () => {
     })
     .filter(Boolean);
 
-  return new Set(envOrigins);
+  const originsSet = new Set(envOrigins);
+  originsSet.add("https://devsummit.css-nits.in");
+  originsSet.add("http://localhost:5173");
+  return originsSet;
 };
 
 const isAllowedOrigin = (origin) => {

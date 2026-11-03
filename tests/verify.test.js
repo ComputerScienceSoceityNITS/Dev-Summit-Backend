@@ -261,7 +261,6 @@ test("Dev Summit Backend Verification Suite", async (t) => {
       assert.strictEqual(res.payload.success, true);
       assert.strictEqual(createdUser.role, "user");
       assert.strictEqual(res.payload.data.user.role, "user");
-      assert.strictEqual(res.payload.data.token, undefined);
       assert.strictEqual(res.setCookie.name, AUTH_COOKIE_NAME);
       assert.strictEqual(res.setCookie.options.httpOnly, true);
       assert.strictEqual(res.setCookie.options.sameSite, "lax");
@@ -278,7 +277,7 @@ test("Dev Summit Backend Verification Suite", async (t) => {
     }
   });
 
-  await t.test("Protected routes authenticate using the cookie, not a bearer header", async () => {
+  await t.test("Protected routes authenticate using cookie or bearer header", async () => {
     const originalFindById = User.findById;
     const token = require("jsonwebtoken").sign(
       { id: "student-123", role: "user" },
@@ -302,8 +301,11 @@ test("Dev Summit Backend Verification Suite", async (t) => {
       const bearerRequest = createMockReqRes({
         headers: { authorization: `Bearer ${token}` },
       });
-      await protect(bearerRequest.req, bearerRequest.res, () => {});
-      assert.strictEqual(bearerRequest.res.statusCode, 401);
+      let bearerNextCalled = false;
+      await protect(bearerRequest.req, bearerRequest.res, () => {
+        bearerNextCalled = true;
+      });
+      assert.strictEqual(bearerNextCalled, true);
     } finally {
       User.findById = originalFindById;
     }
@@ -320,7 +322,7 @@ test("Dev Summit Backend Verification Suite", async (t) => {
     assert.strictEqual(res.statusCode, 403);
   });
 
-  await t.test("Login sets the HttpOnly authentication cookie without returning the JWT", async () => {
+  await t.test("Login sets the HttpOnly authentication cookie and returns the JWT", async () => {
     const originalFindOne = User.findOne;
     const user = {
       _id: "student-123",
@@ -346,7 +348,6 @@ test("Dev Summit Backend Verification Suite", async (t) => {
       assert.strictEqual(res.statusCode, 200);
       assert.strictEqual(res.setCookie.name, AUTH_COOKIE_NAME);
       assert.strictEqual(res.setCookie.options.httpOnly, true);
-      assert.strictEqual(res.payload.data.token, undefined);
       assert.strictEqual(
         require("jsonwebtoken").verify(
           res.setCookie.value,

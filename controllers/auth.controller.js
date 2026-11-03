@@ -63,6 +63,7 @@ const signup = asyncHandler(async (req, res) => {
   setAuthCookie(res, token);
 
   return successResponse(res, 201, "Signup successful", {
+    token,
     user: {
       id: user._id,
       name: user.name,
@@ -102,6 +103,7 @@ const login = asyncHandler(async (req, res) => {
   setAuthCookie(res, token);
 
   return successResponse(res, 200, "Login successful", {
+    token,
     user: {
       id: user._id,
       name: user.name,
@@ -205,6 +207,7 @@ const googleSignIn = asyncHandler(async (req, res) => {
   setAuthCookie(res, token);
 
   return successResponse(res, 200, "Google sign-in successful", {
+    token,
     user: {
       id: user._id,
       name: user.name,

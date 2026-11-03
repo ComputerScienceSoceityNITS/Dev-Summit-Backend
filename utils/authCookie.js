@@ -23,7 +23,15 @@ const getAuthToken = (req) => {
     .map((cookie) => cookie.trim())
     .find((cookie) => cookie.startsWith(`${AUTH_COOKIE_NAME}=`));
 
-  return tokenCookie?.slice(AUTH_COOKIE_NAME.length + 1);
+  const cookieToken = tokenCookie?.slice(AUTH_COOKIE_NAME.length + 1);
+  if (cookieToken) return cookieToken;
+
+  const authHeader = req.headers.authorization;
+  if (authHeader && typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7).trim();
+  }
+
+  return undefined;
 };
 
 module.exports = {
