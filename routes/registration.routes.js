@@ -11,6 +11,6 @@ const {
 } = require("../middleware/rateLimiting.middleware");
 
 router.get("/mine", protect, getMyRegistrations);
-router.post("/register", protect, endpointRateLimit(10, 10 * 60 * 1000), register);
+router.post("/register", protect, register);
 
 module.exports = router;

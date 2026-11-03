@@ -15,11 +15,11 @@ const {
 } = require("../middleware/rateLimiting.middleware");
 
 // Auth endpoints protected by rate limiting
-router.post("/signup", verifyOrigin, endpointRateLimit(5, 10 * 60 * 1000), signup);
-router.post("/login", verifyOrigin, endpointRateLimit(5, 10 * 60 * 1000), login);
-router.post("/google", verifyOrigin, endpointRateLimit(10, 10 * 60 * 1000), googleSignIn);
+router.post("/signup", verifyOrigin,  signup);
+router.post("/login", verifyOrigin,  login);
+router.post("/google", verifyOrigin, googleSignIn);
 router.get("/me", protect, getMe);
-router.patch("/me", protect, endpointRateLimit(10, 10 * 60 * 1000), updateMe);
+router.patch("/me", protect, updateMe);
 router.post("/logout", verifyOrigin, logout);
 
 module.exports = router;
