@@ -154,7 +154,7 @@ test("Dev Summit Backend Verification Suite", async (t) => {
 
       const { req, res } = createMockReqRes({
         body: { eventId: "event-123" },
-        user: { _id: "user-123" },
+        user: { _id: "user-123", scholarId: "22CS001" },
       });
       await register(req, res, (error) => {
         throw error;
@@ -194,7 +194,7 @@ test("Dev Summit Backend Verification Suite", async (t) => {
 
       const { req, res } = createMockReqRes({
         body: { eventId: "event-123" },
-        user: { _id: "user-123" },
+        user: { _id: "user-123", scholarId: "22CS001" },
       });
       await register(req, res, (error) => {
         throw error;

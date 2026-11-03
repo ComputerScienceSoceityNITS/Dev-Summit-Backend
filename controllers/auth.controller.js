@@ -253,10 +253,42 @@ const logout = (req, res) => {
   return successResponse(res, 200, "Logout successful.");
 };
 
+/**
+ * @desc    Update currently authenticated user's profile (scholar ID)
+ * @route   PATCH /api/auth/me
+ * @access  Private
+ */
+const updateMe = asyncHandler(async (req, res) => {
+  const { scholarId } = req.body;
+
+  if (typeof scholarId !== "string" || !scholarId.trim()) {
+    return errorResponse(res, 400, "Scholar ID is required.");
+  }
+
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return errorResponse(res, 404, "User not found.");
+  }
+
+  user.scholarId = scholarId.trim();
+  await user.save();
+
+  return successResponse(res, 200, "Profile updated successfully.", {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      scholarId: user.scholarId,
+      role: user.role,
+    },
+  });
+});
+
 module.exports = {
   signup,
   login,
   googleSignIn,
   getMe,
+  updateMe,
   logout,
 };

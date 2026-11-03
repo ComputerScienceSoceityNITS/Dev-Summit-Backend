@@ -47,10 +47,26 @@ const getMyRegistrations = asyncHandler(async (req, res) => {
  * @access  Private
  */
 const register = asyncHandler(async (req, res) => {
-  const { eventId } = req.body;
+  const { eventId, scholarId } = req.body;
 
   if (!eventId) {
     return errorResponse(res, 400, "Event ID is required.");
+  }
+
+  // Ensure user has a scholar ID. If provided in the request body, persist it to user.
+  if (scholarId && typeof scholarId === "string" && scholarId.trim()) {
+    if (!req.user.scholarId) {
+      req.user.scholarId = scholarId.trim();
+      await req.user.save();
+    }
+  }
+
+  if (!req.user.scholarId || !req.user.scholarId.trim()) {
+    return errorResponse(
+      res,
+      400,
+      "Scholar ID is required before registering for events.",
+    );
   }
 
   const event = await Event.findById(eventId);
