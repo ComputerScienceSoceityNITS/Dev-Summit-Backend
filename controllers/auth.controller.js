@@ -1,8 +1,13 @@
 const jwt = require("jsonwebtoken");
+const { OAuth2Client } = require("google-auth-library");
 const User = require("../models/user.model");
 const asyncHandler = require("../utils/asyncHandler");
 const { successResponse, errorResponse } = require("../utils/responseHandler");
 const { setAuthCookie, clearAuthCookie } = require("../utils/authCookie");
+
+const googleClient = new OAuth2Client();
+const googleClientIdPattern =
+  /^\d+-[A-Za-z0-9_-]+\.apps\.googleusercontent\.com$/;
 
 // Helper to generate JWT token
 const generateToken = (id, role) => {
@@ -18,8 +23,6 @@ const generateToken = (id, role) => {
  */
 const signup = asyncHandler(async (req, res) => {
   const { name, email, password, scholarId } = req.body;
-
-  console.log(name);
 
   if (
     typeof name !== "string" ||
@@ -64,6 +67,7 @@ const signup = asyncHandler(async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      scholarId: user.scholarId,
       role: user.role,
     },
   });
@@ -102,6 +106,110 @@ const login = asyncHandler(async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      scholarId: user.scholarId,
+      role: user.role,
+    },
+  });
+});
+
+/**
+ * @desc    Verify a Google identity credential and sign in or create an account
+ * @route   POST /api/auth/google
+ * @access  Public
+ */
+const googleSignIn = asyncHandler(async (req, res) => {
+  const { credential } = req.body;
+
+  if (typeof credential !== "string" || !credential.trim()) {
+    return errorResponse(res, 400, "A Google credential is required.");
+  }
+
+  if (!googleClientIdPattern.test(process.env.GOOGLE_CLIENT_ID || "")) {
+    return errorResponse(
+      res,
+      503,
+      "Google sign-in needs a valid OAuth Web client ID in the backend configuration.",
+    );
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    payload = ticket.getPayload();
+  } catch (verificationError) {
+    const transientNetworkCodes = new Set([
+      "ECONNRESET",
+      "ECONNREFUSED",
+      "ETIMEDOUT",
+      "ENOTFOUND",
+      "EAI_AGAIN",
+    ]);
+
+    if (
+      transientNetworkCodes.has(verificationError.code) ||
+      verificationError.response?.status >= 500
+    ) {
+      throw verificationError;
+    }
+
+    return errorResponse(res, 401, "Google sign-in could not be verified.");
+  }
+
+  const email = payload?.email?.trim().toLowerCase();
+  const emailDomain = email?.split("@")[1];
+
+  if (
+    !payload?.sub ||
+    !email ||
+    payload.email_verified !== true ||
+    !emailDomain?.endsWith(".nits.ac.in")
+  ) {
+    return errorResponse(
+      res,
+      403,
+      "Use a verified NIT Silchar Google account to continue.",
+    );
+  }
+
+  let user = await User.findOne({ googleId: payload.sub });
+
+  if (!user) {
+    user = await User.findOne({ email });
+
+    if (user?.googleId && user.googleId !== payload.sub) {
+      return errorResponse(
+        res,
+        409,
+        "This email is already linked to another Google account.",
+      );
+    }
+
+    if (user) {
+      user.googleId = payload.sub;
+      await user.save();
+    } else {
+      user = await User.create({
+        name: payload.name?.trim() || email.split("@")[0],
+        email,
+        scholarId: "",
+        googleId: payload.sub,
+        role: "user",
+      });
+    }
+  }
+
+  const token = generateToken(user._id, user.role);
+  setAuthCookie(res, token);
+
+  return successResponse(res, 200, "Google sign-in successful", {
+    user: {
+      id: user._id,
+      name: user.name,
+      email: user.email,
+      scholarId: user.scholarId,
       role: user.role,
     },
   });
@@ -129,6 +237,7 @@ const getMe = asyncHandler(async (req, res) => {
       id: user._id,
       name: user.name,
       email: user.email,
+      scholarId: user.scholarId,
       role: user.role,
     },
   });
@@ -147,6 +256,7 @@ const logout = (req, res) => {
 module.exports = {
   signup,
   login,
+  googleSignIn,
   getMe,
   logout,
 };

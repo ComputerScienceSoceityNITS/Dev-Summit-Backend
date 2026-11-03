@@ -1,3 +1,5 @@
+const { isProduction, isVercel } = require("./runtimeEnvironment");
+
 const getAllowedOrigins = () => {
   const envOrigins = (
     process.env.ALLOWED_ORIGINS ||
@@ -27,7 +29,7 @@ const isAllowedOrigin = (origin) => {
     return true;
   }
 
-  if (process.env.NODE_ENV === "production") {
+  if (isProduction || isVercel) {
     return false;
   }
 

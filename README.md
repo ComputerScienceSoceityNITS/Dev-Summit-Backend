@@ -79,6 +79,8 @@ npm run seed
 
 ### 4. Run Development Server
 
+Use Node.js 18.11 or newer (`npm run dev` uses Node's built-in watch mode).
+
 ```bash
 npm run dev
 # or for production:
@@ -117,23 +119,27 @@ All responses adhere to the standard JSON format:
 ### 2. Participant (Authenticated Participation)
 
 - `POST /api/registrations/solo` — Register the authenticated user for an open event. Send `{ "eventId": "<event-id>" }`.
+- `GET /api/registrations/mine` — Get the authenticated user's active registrations and event details.
 
 ### 3. Authentication & Admin (Protected)
 
 - `POST /api/auth/signup` — Create a user account and set an authentication cookie.
 - `POST /api/auth/login` — Authenticate a user and set an authentication cookie.
+- `POST /api/auth/google` — Verify a Google Identity Services credential and sign in or create a user account.
 - `POST /api/auth/logout` — Clear the authentication cookie.
-- `GET /api/auth/me` — Current authenticated session.
+- `GET /api/auth/me` — Current authenticated session and account details.
 - `GET /api/admin/registrations` — Paginated participant records with event, status, and user search filters.
 - `GET /api/admin/registrations/export` — Download participant data as CSV.
 - `PATCH /api/admin/registrations/:id/status` — Set participant status to `registered` or `unregistered`.
 - `GET /api/admin/stats` — Participant status and event totals.
 
-Authentication uses an HttpOnly JWT cookie named `dev_summit_token`. The token is not included in the signup or login response. The cookie uses `SameSite=Lax` and is marked `Secure` in production. Configure `CLIENT_URL` with the frontend origin; browser clients making cross-origin requests must include credentials.
+Authentication uses an HttpOnly JWT cookie named `dev_summit_token`. The token is not included in the signup or login response. The cookie uses `SameSite=None; Secure` on Vercel/production deployments so the separately hosted frontend can authenticate, and `SameSite=Lax` for local development. Configure `CLIENT_URL` or `ALLOWED_ORIGINS` with the exact deployed frontend origin; browser clients making cross-origin requests must include credentials.
 
-Signup requires `name`, `email`, `password`, and `scholarId`; the email must use the `cse.nits.ac.in` domain. Public signup always creates a regular user account, regardless of any `role` value in the request.
+Password-based signup requires `name`, `email`, `password`, and `scholarId`; the email must use an NIT Silchar subdomain. Public signup always creates a regular user account, regardless of any `role` value in the request.
+
+Google sign-in requires `GOOGLE_CLIENT_ID` in the backend environment and the same value as `VITE_GOOGLE_CLIENT_ID` in the frontend environment. Configure the OAuth client as a Web application and allow the frontend's origin in its authorized JavaScript origins. Only verified `*.nits.ac.in` Google accounts can sign in. Google-created accounts may have an empty Scholar ID; users can still complete their profile with that field marked as not provided.
 
 Event participation is stored as a `Participant` record linking the authenticated user and event. Each user can have one record per event; registering again reactivates an `unregistered` record. Team registrations and ticket verification are not supported by this participant model.
 
-Authenticated requests validate the `Origin` against `CLIENT_URL` (with local development origins allowed outside production). Browser clients must send the authentication cookie with credentials.
+Authenticated requests validate the `Origin` against `ALLOWED_ORIGINS` (comma-separated exact origins), falling back to `CLIENT_URL` (with local development origins allowed outside production). Set the deployed frontend origin in the Vercel backend project settings. Browser clients must send the authentication cookie with credentials.
 "# Dev-Summit-Backend" 
